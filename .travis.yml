@@ -13,8 +13,8 @@ addons:
     - wget
     - xz-utils
     - python3
+    - python3-pip
     - g++
-    - python3-setuptools
     - libacl1-dev
     - libtest-most-perl
     - stress-ng
@@ -34,6 +34,7 @@ before_install:
       echo "Only non-source files were updated, no need to trigger a build."
       exit
   }
+- sudo -H pip3 install setuptools
 - sudo mkdir -p /lower /upper /merged
 - (wget http://download.tuxera.com/sw/qa/pjd-fstest-20090130-RC.tgz; tar xf pjd-fstest-20090130-RC.tgz;
   cd pjd-fstest-20090130-RC; gcc -Wall -DHAS_ACL fstest.c -o fstest -lacl; patch -p1
