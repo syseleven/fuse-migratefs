@@ -190,8 +190,6 @@ static void FUSE_ENTER(fuse_req_t req)
 
 static void FUSE_EXIT_NOSETGROUPS()
 {
-  gid_t gid = 0;
-
   // use direct syscalls as the libc functions will synchronize all threads
 
   if (syscall(SYS_setresuid, -1, 0, -1) < 0)
