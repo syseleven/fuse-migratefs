@@ -10,8 +10,8 @@ URL: https://github.com/giuseppe/fuse-migratefs
 BuildRequires: autoconf automake
 BuildRequires: git
 BuildRequires: gcc
-BuildRequires: fuse-devel > 3
-Requires: fuse > 3
+BuildRequires: fuse3-devel
+Requires: fuse3-libs
 
 %description
 FUSE implementation of an overlay filesystem designed to merge
