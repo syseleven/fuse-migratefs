@@ -1911,33 +1911,47 @@ copyup (struct ovl_data *lo, struct ovl_node *node, bool truncate)
         goto exit;
 
       // Set original ownership
-      if (fchownat(get_upper_layer (lo)->fd, node->path, st.st_uid, st.st_gid,
-                   AT_SYMLINK_NOFOLLOW) < 0)
-        goto exit;
+      if ((ret = fchownat(get_upper_layer (lo)->fd, node->path, st.st_uid, st.st_gid,
+                          AT_SYMLINK_NOFOLLOW)) < 0)
+          goto exit;
 
       goto success;
     }
 
   sfd = TEMP_FAILURE_RETRY (openat (node_dirfd (node), node->path, O_RDONLY|O_NONBLOCK));
   if (sfd < 0)
-    goto exit;
+    {
+      ret = -1;
+      verb_print ("copyup=failed call=openat errno=%d path=%s\n", errno, node->path);
+      goto exit;
+    }
 
   parentfd = TEMP_FAILURE_RETRY (openat (get_upper_layer (lo)->fd, node->parent->path, O_DIRECTORY));
   if (parentfd < 0)
     {
       verb_print ("copyup=failed call=openat errno=%d path=%s\n",
                   errno, node->parent->path);
+      ret = -1;
       goto exit;
     }
 
   dfd = TEMP_FAILURE_RETRY (openat (parentfd, wd_tmp_file_name, O_CREAT|O_WRONLY, st.st_mode));
   if (dfd < 0)
-    goto exit;
+    {
+      verb_print ("copyup=failed call=openat errno=%d node->parent->path=%s wd_tmp_file_name=%s\n",
+                  errno, node->parent->path, wd_tmp_file_name);
+      ret = -1;
+      goto exit;
+    }
 
   // buf is used for both file content copy and copy_xattr()
   buf = malloc (buf_size);
   if (buf == NULL)
-    goto exit;
+    {
+      ret = -1;
+      verb_print ("copyup=failed call=malloc errno=%d\n", errno);
+      goto exit;
+    }
 
   if (!truncate)
     {
