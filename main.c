@@ -287,6 +287,7 @@ struct ovl_data
   char *upperdir;
   unsigned int max_idle_threads;
   int mt;
+  int omitxattr;
   struct ovl_layer *layers;
 
   struct ovl_node *root;
@@ -297,6 +298,8 @@ static const struct fuse_opt ovl_opts[] = {
    offsetof (struct ovl_data, max_idle_threads), 0},
   {"mt=%d",
    offsetof (struct ovl_data, mt), 0},
+  {"omitxattr",
+   offsetof (struct ovl_data, omitxattr), 1},
   {"lowerdir=%s",
    offsetof (struct ovl_data, lowerdir), 0},
   {"upperdir=%s",
@@ -1708,7 +1711,7 @@ create_directory (struct ovl_data *lo, int dirfd, const char *name, const struct
         }
     }
 
-  if (ret == 0 && xattr_sfd >= 0)
+  if (ret == 0 && xattr_sfd >= 0 && !lo->omitxattr)
     {
       const size_t buf_size = 1 << 20;
       buf = malloc (buf_size);
@@ -1995,12 +1998,15 @@ copyup (struct ovl_data *lo, struct ovl_node *node, bool truncate)
       goto exit;
     }
 
-  ret = copy_xattr (sfd, dfd, buf, buf_size);
-  if (ret < 0)
+  if (!lo->omitxattr)
     {
-      verb_print ("copyup=failed call=copy_xattr uid=%u st_uid=%u errno=%d written=%"PRIu64" path=%s\n",
-                  FUSE_GETCURRENTUID(), st.st_uid, errno, total_written, node->path);
-      goto exit;
+      ret = copy_xattr (sfd, dfd, buf, buf_size);
+      if (ret < 0)
+        {
+          verb_print ("copyup=failed call=copy_xattr uid=%u st_uid=%u errno=%d written=%"PRIu64" path=%s\n",
+                      FUSE_GETCURRENTUID(), st.st_uid, errno, total_written, node->path);
+          goto exit;
+        }
     }
 
   // Set original file ownership
@@ -3896,6 +3902,7 @@ main (int argc, char *argv[])
                         .mountpoint = NULL,
                         .max_idle_threads = MIGRATEFS_MT_MAX_IDLE_THREADS,
                         .mt = MIGRATEFS_MT,
+                        .omitxattr = 0,
   };
   int ret = -1;
   struct fuse_loop_config fusecfg;
@@ -3953,6 +3960,7 @@ main (int argc, char *argv[])
   printf ("LOWERDIR=%s\n", lo.lowerdir);
   printf ("MAX_IDLE_THREADS=%u\n", lo.max_idle_threads);
   printf ("MOUNTPOINT=%s\n", lo.mountpoint);
+  printf ("OMITXATTR=%d\n", lo.omitxattr);
 
   lo.layers = read_dirs (lo.lowerdir, true, NULL);
   if (lo.layers == NULL)
