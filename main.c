@@ -3907,6 +3907,7 @@ main (int argc, char *argv[])
   int ret = -1;
   struct fuse_loop_config fusecfg;
   struct fuse_args args = FUSE_ARGS_INIT (argc, newargv);
+  char *buffer = NULL;
 
   pthread_mutex_init (&ovl_node_global_lock, NULL);
 
@@ -3951,6 +3952,13 @@ main (int argc, char *argv[])
       lo.upperdir = strdup (full_path);
       if (lo.upperdir == NULL)
         error (EXIT_FAILURE, errno, "cannot allocate memory");
+    }
+
+  ret = lgetxattr(lo.lowerdir, "user.test.is.supported", buffer, 0);
+  if (ret < 0 && (errno == ENOTSUP || errno == EOPNOTSUPP))
+    {
+      debug_print ("%s does not support xattrs, setting omitxattr\n", lo.lowerdir);
+      lo.omitxattr = 1;
     }
 
   set_limits ();
